@@ -86,6 +86,7 @@ class ExpressCheckout extends Payment
 
             'ADDROVERRIDE' => 0,
         );
+        $params = array_merge($defaultParams, $params);
 
         if ($this->notify_url()) {
             $params['PAYMENTREQUEST_0_NOTIFYURL'] = $this->notify_url();
