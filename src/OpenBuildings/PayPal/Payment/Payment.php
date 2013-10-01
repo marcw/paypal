@@ -2,6 +2,8 @@
 
 namespace OpenBuildings\PayPal\Payment;
 
+use OpenBuildings\PayPal\Request\Exception;
+
 /**
  * @abstract
  * @author Haralan Dobrev <hdobrev@despark.com>
@@ -11,36 +13,40 @@ namespace OpenBuildings\PayPal\Payment;
 abstract class Payment
 {
     const ENDPOINT_START = 'https://www.';
-
     const WEBSCR_ENDPOINT_END = 'paypal.com/cgi-bin/webscr';
-
     const MERCHANT_ENDPOINT_START = 'https://api-3t.';
-
     const MERCHANT_ENDPOINT_END = 'paypal.com/nvp';
-
     const ENVIRONMENT_LIVE = '';
-
     const ENVIRONMENT_SANDBOX = 'sandbox.';
 
     public static $instances = array();
-
     public static $environment = Payment::ENVIRONMENT_SANDBOX;
-
     public static $config = array(
-        'app_id' => '',
-        'username' => '',
-        'password' => '',
+        'app_id'    => '',
+        'username'  => '',
+        'password'  => '',
         'signature' => '',
-        'email' => '',
+        'email'     => '',
         'client_id' => '',
-        'secret' => '',
-        'currency' => 'USD',
+        'secret'    => '',
+        'currency'  => 'USD',
     );
+
+    protected $_config;
+    protected $_order = array();
+    protected $_return_url = NULL;
+    protected $_cancel_url = NULL;
+    protected $_notify_url = NULL;
 
     protected static $_allowed_environments = array(
         Payment::ENVIRONMENT_LIVE,
         Payment::ENVIRONMENT_SANDBOX
     );
+
+    public function __construct(array $config = array())
+    {
+        $this->config($config);
+    }
 
     public static function instance($name, array $config = array())
     {
@@ -91,7 +97,7 @@ abstract class Payment
 
     public static function merchant_endpoint_url()
     {
-        return Payment::MERCHANT_ENDPOINT_START.Payment::environment().Payment::MERCHANT_ENDPOINT_END;
+        return Payment::MERCHANT_ENDPOINT_START.static::environment().Payment::MERCHANT_ENDPOINT_END;
     }
 
     /**
@@ -105,32 +111,29 @@ abstract class Payment
             $params = array_reverse($params, TRUE);
         }
 
-        return Payment::ENDPOINT_START.Payment::environment().Payment::WEBSCR_ENDPOINT_END.($params ? '?'.http_build_query($params) : '');
+        return Payment::ENDPOINT_START.static::environment().Payment::WEBSCR_ENDPOINT_END.($params ? '?'.http_build_query($params) : '');
+    }
+
+    public static function setEnvironment($environment)
+    {
+        if (!in_array(static::$environment, static::$_allowed_environments)) {
+            throw new Exception('PayPal environment ":environment" is not allowed!', array(
+                ':environment' => static::$environment
+            ));
+        }
+
+        static::$environment = $environment;
     }
 
     public static function environment()
     {
-        if ( ! in_array(Payment::$environment, Payment::$_allowed_environments))
+        if (!in_array(static::$environment, static::$_allowed_environments)) {
             throw new Exception('PayPal environment ":environment" is not allowed!', array(
-                ':environment' => Payment::$environment
+                ':environment' => static::$environment
             ));
+        }
 
-        return Payment::$environment;
-    }
-
-    protected $_config;
-
-    protected $_order = array();
-
-    protected $_return_url = NULL;
-
-    protected $_cancel_url = NULL;
-
-    protected $_notify_url = NULL;
-
-    public function __construct(array $config = array())
-    {
-        $this->config($config);
+        return static::$environment;
     }
 
     public function config($key, $value = NULL)
@@ -218,7 +221,7 @@ abstract class Payment
             $request_data .= "&$key=$value";
         }
 
-        $url = Payment::webscr_url();
+        $url = static::webscr_url();
 
         $curl = curl_init($url);
         curl_setopt_array($curl, array(
@@ -242,7 +245,7 @@ abstract class Payment
             // Close curl
             curl_close($curl);
 
-            throw new Request_Exception('PayPal API request for :method failed: :error (:code)', $url, $post_data, array(
+            throw new Exception('PayPal API request for :method failed: :error (:code)', $url, $post_data, array(
                 ':method' => '_notify-validate',
                 ':error' => $error,
                 ':code' => $code
@@ -255,7 +258,7 @@ abstract class Payment
             return TRUE;
 
         if ($response === 'INVALID')
-            throw new Request_Exception('PayPal request to verify IPN was invalid!', $url, $post_data);
+            throw new Exception('PayPal request to verify IPN was invalid!', $url, $post_data);
 
         return FALSE;
     }
@@ -292,7 +295,7 @@ abstract class Payment
             // Close curl
             curl_close($curl);
 
-            throw new Request_Exception('PayPal API request for :url failed: :error (:code)', $url, $request_data, array(
+            throw new Exception('PayPal API request for :url failed: :error (:code)', $url, $request_data, array(
                 ':url' => $url,
                 ':error' => $error,
                 ':code' => $code
@@ -307,10 +310,10 @@ abstract class Payment
 
     protected function _parse_response($response_string, $url, $request_data)
     {
-        $response = Payment::parse_response($response_string);
+        $response = static::parse_response($response_string);
 
         if ( ! isset($response['ACK']) OR strpos($response['ACK'], 'Success') === FALSE)
-            throw new Request_Exception('PayPal API request did not succeed for :url failed: :error:code.', $url, $request_data, array(
+            throw new Exception('PayPal API request did not succeed for :url failed: :error:code.', $url, $request_data, array(
                 ':url' => $url,
                 ':error' => isset($response['L_LONGMESSAGE0']) ? $response['L_LONGMESSAGE0'] : 'Unknown error',
                 ':code' => isset($response['L_ERRORCODE0']) ? ' ('.$response['L_ERRORCODE0'].')' : '',

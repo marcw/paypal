@@ -2,6 +2,8 @@
 
 namespace OpenBuildings\PayPal\Payment;
 
+use OpenBuildings\PayPal\Request\Exception;
+
 /**
  * @author Haralan Dobrev <hdobrev@despark.com>
  * @copyright (c) 2013 OpenBuildings Inc.
@@ -280,7 +282,7 @@ class Adaptive extends Payment
                 $error_message = 'Unknown error';
             }
 
-            throw new Request_Exception('PayPal API request did not succeed for :url failed: :error:code.', $url, $request_data, array(
+            throw new Exception('PayPal API request did not succeed for :url failed: :error:code.', $url, $request_data, array(
                 ':url' => $url,
                 ':error' => $error_message,
                 ':code' => isset($response['error(0).errorId']) ? ' ('.$response['error(0).errorId'].')' : '',

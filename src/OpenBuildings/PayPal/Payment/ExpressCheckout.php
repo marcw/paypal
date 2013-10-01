@@ -28,9 +28,9 @@ class ExpressCheckout extends Payment
      *
      * @param array $params NVP parameters
      */
-    public function set_express_checkout()
+    public function set_express_checkout($params = array())
     {
-        return $this->_request('SetExpressCheckout', $this->_set_params());
+        return $this->_request('SetExpressCheckout', $this->_set_params($params));
     }
 
     public function do_express_checkout_payment($token, $payer_id)
@@ -56,11 +56,11 @@ class ExpressCheckout extends Payment
         ));
     }
 
-    protected function _set_params()
+    protected function _set_params($params = array())
     {
         $order = $this->order();
 
-        $params = array(
+        $defaultParams = array(
             // Total amount for the transaction
             'PAYMENTREQUEST_0_AMT' => number_format($order['total_price'], 2, '.', ''),
 
@@ -97,7 +97,7 @@ class ExpressCheckout extends Payment
 
     protected function _request($method, array $params = array())
     {
-        return $this->request(Payment::merchant_endpoint_url(), array(
+        return $this->request(static::merchant_endpoint_url(), array(
             'METHOD'    => $method,
             'VERSION'   => self::API_VERSION,
             'USER'      => $this->config('username'),
